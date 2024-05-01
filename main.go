@@ -36,9 +36,9 @@ func main() {
 	}
 
 	resources = []Resource{
-		{ID: 1, Name: "Resource 1"},
-		{ID: 2, Name: "Resource 2"},
-		{ID: 3, Name: "Resource 3"},
+		{ID: 1, Name: "Resource 1", Data: "data 1"},
+		{ID: 2, Name: "Resource 2", Data: "data 2"},
+		{ID: 3, Name: "Resource 3", Data: "data 3"},
 	}
 
 	mux := http.NewServeMux()
