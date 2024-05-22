@@ -45,12 +45,19 @@ func main() {
 
 	mux.HandleFunc("/login", login)
 	mux.HandleFunc("/resources", getResources)
-	mux.HandleFunc("/resource", resource)
+	mux.HandleFunc("/resource/{id}", updateResource)
+	mux.HandleFunc("/resource", setResource)
 
 	fmt.Println("Server is running on port 8080")
 
 	allowedOrigins := []string{"http://localhost:8080", "http://localhost:4000"}
-	handler := cors.New(cors.Options{AllowedOrigins: allowedOrigins, AllowCredentials: true, Debug: true}).Handler(mux)
+	handler := cors.New(
+		cors.Options{
+			AllowedOrigins:   allowedOrigins,
+			AllowCredentials: true,
+			AllowedMethods:   []string{"GET", "POST", "PUT", "OPTIONS"},
+			Debug:            true,
+		}).Handler(mux)
 	log.Fatal(http.ListenAndServe(":8080", handler))
 }
 
@@ -124,14 +131,23 @@ func getResources(w http.ResponseWriter, r *http.Request) {
 	returnJson(w, result)
 }
 
-func resource(w http.ResponseWriter, r *http.Request) {
+func setResource(w http.ResponseWriter, r *http.Request) {
 	if !isAuthorized(r) {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
-	if r.Method == "POST" {
-		postResource(w, r)
+	if r.Method != "POST" {
+		http.Error(w, "Only POST allowed", http.StatusBadRequest)
+		return
+	}
+
+	postResource(w, r)
+}
+
+func updateResource(w http.ResponseWriter, r *http.Request) {
+	if !isAuthorized(r) {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
@@ -174,7 +190,7 @@ func putResource(w http.ResponseWriter, r *http.Request, id int) {
 	for i, res := range resources {
 		if res.ID == id {
 			resources[i] = tmp
-			returnJson(w, res)
+			returnJson(w, tmp)
 			return
 		}
 	}
