@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 
+	_ "github.com/mattn/go-sqlite3"
 	"github.com/rs/cors"
 )
 
@@ -17,9 +18,10 @@ type User struct {
 }
 
 type Resource struct {
-	ID   int    `json:"id"`
-	Name string `json:"name"`
-	Data string `json:"data"`
+	ID     int    `json:"id"`
+	UserId int    `json:"userId"`
+	Name   string `json:"name"`
+	Data   string `json:"data"`
 }
 
 var (
@@ -30,16 +32,17 @@ var (
 
 func main() {
 
+	db, err := OpenDB("file:db")
+	if err != nil {
+		panic(err)
+	}
+	defer db.Close()
+
 	users = []User{
 		{ID: 1, Username: "admin", Password: "admin"},
-		{ID: 2, Username: "user", Password: "password"},
 	}
 
-	resources = []Resource{
-		{ID: 1, Name: "Resource 1", Data: "data 1"},
-		{ID: 2, Name: "Resource 2", Data: "data 2"},
-		{ID: 3, Name: "Resource 3", Data: "data 3"},
-	}
+	resources = GetUserResources(users[0])
 
 	mux := http.NewServeMux()
 
