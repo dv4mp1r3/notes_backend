@@ -21,8 +21,8 @@ func NewRAMSessionStore() *RAMSessionStore {
 	}
 }
 
-func (s *RAMSessionStore) CreateSession() (*Session, error) {
-	session := NewSession()
+func (s *RAMSessionStore) CreateSession(userId int) (*Session, error) {
+	session := NewSession(userId)
 
 	s.mutex.Lock()
 	defer s.mutex.Unlock()

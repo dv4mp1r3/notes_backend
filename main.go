@@ -25,8 +25,6 @@ type Resource struct {
 }
 
 var (
-	users        []User
-	resources    []Resource
 	sessionStore = NewRAMSessionStore()
 )
 
@@ -37,12 +35,6 @@ func main() {
 		panic(err)
 	}
 	defer db.Close()
-
-	users = []User{
-		{ID: 1, Username: "admin", Password: "admin"},
-	}
-
-	resources = GetUserResources(users[0])
 
 	mux := http.NewServeMux()
 
@@ -76,33 +68,37 @@ func login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	for _, user := range users {
-		if user.Username == userReq.Username && user.Password == userReq.Password {
-			session, err := sessionStore.CreateSession()
-			if err != nil {
-				http.Error(w, "Bad request", http.StatusBadRequest)
-				return
-			}
-			http.SetCookie(w, &http.Cookie{
-				Name:  "session",
-				Value: session.ID,
-				Path:  "/",
-			})
-			w.WriteHeader(http.StatusOK)
+	userId, err := IsAccountCorrect(userReq)
+	if err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+	if userId > 0 {
+		userReq.ID = userId
+		session, err := sessionStore.CreateSession(userId)
+		if err != nil {
+			http.Error(w, "Bad request", http.StatusBadRequest)
 			return
 		}
+		http.SetCookie(w, &http.Cookie{
+			Name:  "session",
+			Value: session.ID,
+			Path:  "/",
+		})
+		w.WriteHeader(http.StatusOK)
+		return
 	}
 
 	http.Error(w, "Invalid username or password", http.StatusUnauthorized)
 }
 
-func isAuthorized(r *http.Request) bool {
+func isAuthorized(r *http.Request) (bool, int) {
 	sessionID, err := r.Cookie("session")
 	if err != nil {
-		return false
+		return false, 0
 	}
 	session, err := sessionStore.GetSession(sessionID.Value)
-	return session != nil && err == nil
+	return session != nil && err == nil, session.UserId
 }
 
 func returnJson(w http.ResponseWriter, v any) {
@@ -111,10 +107,13 @@ func returnJson(w http.ResponseWriter, v any) {
 }
 
 func getResources(w http.ResponseWriter, r *http.Request) {
-	if !isAuthorized(r) {
+	_, userId := isAuthorized(r)
+	if !(userId > 0) {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
+
+	resources := GetUserResources(User{ID: userId})
 
 	limit, err := strconv.Atoi(r.URL.Query().Get("limit"))
 	if err != nil {
@@ -135,7 +134,8 @@ func getResources(w http.ResponseWriter, r *http.Request) {
 }
 
 func setResource(w http.ResponseWriter, r *http.Request) {
-	if !isAuthorized(r) {
+	_, userId := isAuthorized(r)
+	if !(userId > 0) {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
@@ -145,11 +145,12 @@ func setResource(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	postResource(w, r)
+	postResource(w, r, userId)
 }
 
 func updateResource(w http.ResponseWriter, r *http.Request) {
-	if !isAuthorized(r) {
+	_, userId := isAuthorized(r)
+	if !(userId > 0) {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
@@ -160,16 +161,13 @@ func updateResource(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if r.Method == "PUT" {
-		putResource(w, r, id)
-		return
-	}
-
+	putResource(w, r, id)
 	getResource(w, id)
 }
 
 func getResource(w http.ResponseWriter, id int) {
 	var result Resource
+	resources := GetUserResources(User{ID: 1})
 	for _, res := range resources {
 		if res.ID == id {
 			result = res
@@ -190,23 +188,27 @@ func putResource(w http.ResponseWriter, r *http.Request, id int) {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
-	for i, res := range resources {
-		if res.ID == id {
-			resources[i] = tmp
-			returnJson(w, tmp)
-			return
-		}
+	if tmp.ID <= 0 {
+		http.Error(w, "Not found", http.StatusNotFound)
+		return
 	}
-	http.Error(w, "Not found", http.StatusNotFound)
+	success, err := UpdateResource(tmp)
+	if !success {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+	}
+	returnJson(w, tmp)
 }
 
-func postResource(w http.ResponseWriter, r *http.Request) {
+func postResource(w http.ResponseWriter, r *http.Request, userId int) {
 	var res Resource
 	if err := json.NewDecoder(r.Body).Decode(&res); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
-	res.ID = resources[len(resources)-1].ID + 1
-	resources = append(resources, res)
+	res.UserId = userId
+	success, err := InsertResource(res)
+	if !success {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+	}
 	returnJson(w, res)
 }

@@ -9,6 +9,7 @@ type Session struct {
 	ID        string
 	Data      map[string]interface{}
 	ExpiresAt time.Time
+	UserId    int
 }
 
 type SessionStore interface {
@@ -17,11 +18,12 @@ type SessionStore interface {
 	DeleteSession(id string) error
 }
 
-func NewSession() *Session {
+func NewSession(userId int) *Session {
 	return &Session{
 		ID:        generateSessionID(),
 		Data:      make(map[string]interface{}),
 		ExpiresAt: time.Now().Add(24 * time.Hour),
+		UserId:    userId,
 	}
 }
 
