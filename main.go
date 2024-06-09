@@ -22,6 +22,7 @@ type Resource struct {
 	UserId int    `json:"userId"`
 	Name   string `json:"name"`
 	Data   string `json:"data"`
+	Icon   string `json:"icon"`
 }
 
 var (

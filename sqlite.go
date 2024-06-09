@@ -52,7 +52,7 @@ func IsAccountCorrect(user User) (int, error) {
 func GetUserResources(user User) []Resource {
 	result := []Resource{}
 	rows, err := queryStatement(
-		"SELECT id,name,data,user_id FROM resources WHERE resources.user_id = ?",
+		"SELECT id,name,data,user_id,icon FROM resources WHERE resources.user_id = ?",
 		user.ID,
 	)
 	if err != nil {
@@ -61,18 +61,18 @@ func GetUserResources(user User) []Resource {
 	defer rows.Close()
 	for rows.Next() {
 		var res Resource
-		rows.Scan(&res.ID, &res.Name, &res.Data, &res.UserId)
+		rows.Scan(&res.ID, &res.Name, &res.Data, &res.UserId, &res.Icon)
 		result = append(result, res)
 	}
 	return result
 }
 
 func InsertResource(res Resource) (bool, error) {
-	return execStatement("INSERT INTO resources (name, data, user_id) VALUES (?,?,?)", res.Name, res.Data, res.UserId)
+	return execStatement("INSERT INTO resources (name, data, user_id, icon) VALUES (?,?,?)", res.Name, res.Data, res.Icon, res.UserId)
 }
 
 func UpdateResource(res Resource) (bool, error) {
-	return execStatement("UPDATE resources SET name=?,data=? WHERE id=?", res.Name, res.Data, res.ID)
+	return execStatement("UPDATE resources SET name=?,data=?, icon=? WHERE id=?", res.Name, res.Data, res.Icon, res.ID)
 }
 
 func DeleteResource(res Resource) (bool, error) {
