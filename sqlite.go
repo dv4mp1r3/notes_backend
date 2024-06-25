@@ -22,14 +22,16 @@ func queryStatement(query string, args ...any) (*sql.Rows, error) {
 	return stmt.Query(args...)
 }
 
-func execStatement(query string, args ...any) (bool, error) {
+func execStatement(query string, args ...any) (sql.Result, error) {
 
 	stmt, err := db.Prepare(query)
 	if err != nil {
-		return false, err
+		return nil, err
 	}
-	_, err = stmt.Exec(args...)
+	return stmt.Exec(args...)
+}
 
+func statementResultAsBool(result sql.Result, err error) (bool, error) {
 	if err != nil {
 		return false, err
 	}
@@ -67,14 +69,18 @@ func GetUserResources(user User) []Resource {
 	return result
 }
 
-func InsertResource(res Resource) (bool, error) {
-	return execStatement("INSERT INTO resources (name, data, user_id, icon) VALUES (?,?,?)", res.Name, res.Data, res.Icon, res.UserId)
+func InsertResource(res Resource) (int64, error) {
+	success, err := execStatement("INSERT INTO resources (name, data, user_id, icon) VALUES (?,?,?,?)", res.Name, res.Data, res.Icon, res.UserId)
+	if err != nil {
+		return 0, err
+	}
+	return success.LastInsertId()
 }
 
 func UpdateResource(res Resource) (bool, error) {
-	return execStatement("UPDATE resources SET name=?,data=?, icon=? WHERE id=?", res.Name, res.Data, res.Icon, res.ID)
+	return statementResultAsBool(execStatement("UPDATE resources SET name=?,data=?, icon=? WHERE id=?", res.Name, res.Data, res.Icon, res.ID))
 }
 
 func DeleteResource(res Resource) (bool, error) {
-	return execStatement("DELETE FROM resources WHERE id=?", res.ID)
+	return statementResultAsBool(execStatement("DELETE FROM resources WHERE id=?", res.ID))
 }

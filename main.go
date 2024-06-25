@@ -207,9 +207,10 @@ func postResource(w http.ResponseWriter, r *http.Request, userId int) {
 		return
 	}
 	res.UserId = userId
-	success, err := InsertResource(res)
-	if !success {
+	resourceId, err := InsertResource(res)
+	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 	}
+	res.ID = int(resourceId)
 	returnJson(w, res)
 }
