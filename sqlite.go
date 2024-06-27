@@ -70,7 +70,7 @@ func GetUserResources(user User) []Resource {
 }
 
 func InsertResource(res Resource) (int64, error) {
-	success, err := execStatement("INSERT INTO resources (name, data, user_id, icon) VALUES (?,?,?,?)", res.Name, res.Data, res.Icon, res.UserId)
+	success, err := execStatement("INSERT INTO resources (name, data, user_id, icon) VALUES (?,?,?,?)", res.Name, res.Data, res.UserId, res.Icon)
 	if err != nil {
 		return 0, err
 	}
