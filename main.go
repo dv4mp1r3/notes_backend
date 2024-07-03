@@ -51,7 +51,7 @@ func main() {
 		cors.Options{
 			AllowedOrigins:   allowedOrigins,
 			AllowCredentials: true,
-			AllowedMethods:   []string{"GET", "POST", "PUT", "OPTIONS"},
+			AllowedMethods:   []string{"GET", "POST", "PUT", "OPTIONS", "DELETE"},
 			Debug:            true,
 		}).Handler(mux)
 	log.Fatal(http.ListenAndServe(":8080", handler))
@@ -162,8 +162,22 @@ func updateResource(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	putResource(w, r, id)
-	getResource(w, id)
+	if r.Method == "DELETE" {
+		deleteResource(w, id)
+		return
+	} else {
+		putResource(w, r, id)
+		getResource(w, id)
+	}
+}
+
+func deleteResource(w http.ResponseWriter, id int) {
+	success, err := DeleteResource(id)
+	if !success {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
 }
 
 func getResource(w http.ResponseWriter, id int) {

@@ -81,6 +81,6 @@ func UpdateResource(res Resource) (bool, error) {
 	return statementResultAsBool(execStatement("UPDATE resources SET name=?,data=?, icon=? WHERE id=?", res.Name, res.Data, res.Icon, res.ID))
 }
 
-func DeleteResource(res Resource) (bool, error) {
-	return statementResultAsBool(execStatement("DELETE FROM resources WHERE id=?", res.ID))
+func DeleteResource(id int) (bool, error) {
+	return statementResultAsBool(execStatement("DELETE FROM resources WHERE id=?", id))
 }
