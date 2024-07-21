@@ -38,9 +38,10 @@ func statementResultAsBool(result sql.Result, err error) (bool, error) {
 	return true, err
 }
 
-func IsAccountCorrect(user User) (int, error) {
+func IsAccountCorrect(user User, salt string) (int, error) {
 	var id int
-	rows, err := queryStatement("SELECT id FROM user WHERE username=? AND password=?", user.Username, user.Password)
+	hash := HashPassword(user.Password, salt)
+	rows, err := queryStatement("SELECT id FROM user WHERE username=? AND password=?", user.Username, hash)
 	if err != nil {
 		return 0, err
 	}
