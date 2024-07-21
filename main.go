@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -27,7 +28,25 @@ type Resource struct {
 
 var (
 	sessionStore = NewRAMSessionStore()
+	salt         = initSalt()
 )
+
+func stringFromEnv(key string, defaultValue string) string {
+	env, exists := os.LookupEnv(key)
+	if !exists {
+		env = defaultValue
+	}
+	return env
+}
+
+func initSalt() string {
+
+	salt, err := GenerateSalt(16)
+	if err != nil {
+		panic(err)
+	}
+	return stringFromEnv("SALT", salt)
+}
 
 func main() {
 
@@ -69,7 +88,7 @@ func login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userId, err := IsAccountCorrect(userReq)
+	userId, err := IsAccountCorrect(userReq, salt)
 	if err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
