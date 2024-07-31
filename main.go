@@ -27,8 +27,11 @@ type Resource struct {
 }
 
 var (
-	sessionStore = NewRAMSessionStore()
-	salt         = initSalt()
+	sessionStore  = NewRAMSessionStore()
+	salt          = initSalt()
+	apiPrefix     = stringFromEnv("API_PREFIX", "")
+	appPort       = stringFromEnv("APP_PORT", "8080")
+	allowedOrigin = stringFromEnv("ALLOWED_ORIGIN", "http://localhost:4000")
 )
 
 func stringFromEnv(key string, defaultValue string) string {
@@ -57,15 +60,14 @@ func main() {
 	defer db.Close()
 
 	mux := http.NewServeMux()
+	mux.HandleFunc(apiPrefix+"/login", login)
+	mux.HandleFunc(apiPrefix+"/resources", getResources)
+	mux.HandleFunc(apiPrefix+"/resource/{id}", updateResource)
+	mux.HandleFunc(apiPrefix+"/resource", setResource)
 
-	mux.HandleFunc("/login", login)
-	mux.HandleFunc("/resources", getResources)
-	mux.HandleFunc("/resource/{id}", updateResource)
-	mux.HandleFunc("/resource", setResource)
+	fmt.Println("Server is running on port", appPort)
 
-	fmt.Println("Server is running on port 8080")
-
-	allowedOrigins := []string{"http://localhost:8080", "http://localhost:4000"}
+	allowedOrigins := []string{allowedOrigin}
 	handler := cors.New(
 		cors.Options{
 			AllowedOrigins:   allowedOrigins,
@@ -73,7 +75,7 @@ func main() {
 			AllowedMethods:   []string{"GET", "POST", "PUT", "OPTIONS", "DELETE"},
 			Debug:            true,
 		}).Handler(mux)
-	log.Fatal(http.ListenAndServe(":8080", handler))
+	log.Fatal(http.ListenAndServe(":"+appPort, handler))
 }
 
 func login(w http.ResponseWriter, r *http.Request) {
@@ -84,12 +86,14 @@ func login(w http.ResponseWriter, r *http.Request) {
 
 	var userReq User
 	if err := json.NewDecoder(r.Body).Decode(&userReq); err != nil {
+		fmt.Println(err)
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
 
 	userId, err := IsAccountCorrect(userReq, salt)
 	if err != nil {
+		fmt.Println(err)
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
