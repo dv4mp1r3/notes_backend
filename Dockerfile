@@ -10,4 +10,14 @@ FROM alpine:3.20 as prod
 WORKDIR /usr/go
 COPY --from=stage-build /usr/go/notes ./notes
 RUN mkdir /lib64 && ln -s /lib/libc.musl-x86_64.so.1 /lib64/ld-linux-x86-64.so.2
+RUN addgroup -S app \
+    && adduser \
+    --disabled-password \
+    --gecos "" \
+    --home /home/app \
+    --ingroup app \
+    --uid "1000" \
+    app \
+    && chown -R app:app /usr/go
+USER app
 CMD ["./notes"]
