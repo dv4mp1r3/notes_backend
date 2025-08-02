@@ -61,6 +61,15 @@ func runCliMode() {
 		}
 		log.Printf("Added user %s with id: %d", os.Args[2], id)
 		return
+	case "delUser":
+		log.Printf("Deleting user %s", os.Args[2])
+		_, err := DeleteUser(os.Args[2])
+		if err != nil {
+			log.Fatal(err)
+			return
+		}
+		log.Printf("User %s was successfully deleted", os.Args[2])
+		return
 	default:
 		//todo: print help
 	}
