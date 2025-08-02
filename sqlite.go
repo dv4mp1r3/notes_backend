@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"log"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -80,6 +81,28 @@ func AddUser(username string, password string, salt string) (int64, error) {
 		return 0, err
 	}
 	return success.LastInsertId()
+}
+
+func DeleteUser(username string) (bool, error) {
+	tx, err := db.Begin()
+	if err != nil {
+		log.Fatalf("DeleteUser on begin transaction error: %s", err)
+		return false, err
+	}
+	delResResult, err := statementResultAsBool(execStatement("DELETE FROM resources WHERE id=(select id from user where username = ?)", username))
+	if err != nil {
+		log.Fatalf("DeleteUser on delete resources error: %s", err)
+		tx.Rollback()
+		return delResResult, err
+	}
+	delUserResult, err := statementResultAsBool(execStatement("DELETE FROM user WHERE username=?", username))
+	if err != nil {
+		log.Fatalf("DeleteUser on delete user error: %s", err)
+		tx.Rollback()
+		return delUserResult, err
+	}
+	tx.Commit()
+	return delResResult && delUserResult, nil
 }
 
 func InsertResource(res Resource) (int64, error) {
