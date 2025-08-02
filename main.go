@@ -51,6 +51,21 @@ func initSalt() string {
 	return stringFromEnv("SALT", salt)
 }
 
+func runCliMode() {
+	switch os.Args[1] {
+	case "addUser":
+		id, err := AddUser(os.Args[2], os.Args[3], salt)
+		if err != nil {
+			log.Fatal(err)
+			return
+		}
+		log.Printf("Added user %s with id: %d", os.Args[2], id)
+		return
+	default:
+		//todo: print help
+	}
+}
+
 func main() {
 
 	db, err := OpenDB("file:db")
@@ -58,6 +73,11 @@ func main() {
 		panic(err)
 	}
 	defer db.Close()
+
+	if len(os.Args) > 1 {
+		runCliMode()
+		return
+	}
 
 	mux := http.NewServeMux()
 	mux.HandleFunc(apiPrefix+"/login", login)

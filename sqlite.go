@@ -70,6 +70,18 @@ func GetUserResources(user User) []Resource {
 	return result
 }
 
+func AddUser(username string, password string, salt string) (int64, error) {
+	success, err := execStatement(
+		"INSERT INTO user (username, password) VALUES (?,?)",
+		username,
+		HashPassword(password, salt),
+	)
+	if err != nil {
+		return 0, err
+	}
+	return success.LastInsertId()
+}
+
 func InsertResource(res Resource) (int64, error) {
 	success, err := execStatement("INSERT INTO resources (name, data, user_id, icon) VALUES (?,?,?,?)", res.Name, res.Data, res.UserId, res.Icon)
 	if err != nil {
