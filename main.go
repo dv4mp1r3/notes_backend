@@ -77,7 +77,7 @@ func runCliMode() {
 
 func main() {
 
-	db, err := OpenDB("file:db")
+	db, err := OpenDB("file:db/db")
 	if err != nil {
 		panic(err)
 	}
