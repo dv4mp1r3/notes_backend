@@ -1,7 +1,7 @@
 FROM golang:1.22.5-alpine3.20 as stage-build
 WORKDIR /usr/go
 COPY ./*.go go.mod go.sum ./
-RUN apk add --no-cache gcc=15.1.1_git20250726-r0 musl-dev=1.2.5-r17 && \
+RUN apk add --no-cache gcc=13.2.1_git20240309-r1 musl-dev=1.2.5-r1 && \
     go mod download && \
     GOOS=linux GOARCH=amd64 CGO_ENABLED=1 go build .
 
