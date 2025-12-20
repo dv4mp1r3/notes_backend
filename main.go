@@ -19,11 +19,24 @@ type User struct {
 }
 
 type Resource struct {
+	ID         int    `json:"id"`
+	UserId     int    `json:"userId"`
+	CategoryId int    `json:"categoryId"`
+	Name       string `json:"name"`
+	Data       string `json:"data"`
+	Icon       string `json:"icon"`
+}
+
+type Category struct {
 	ID     int    `json:"id"`
 	UserId int    `json:"userId"`
 	Name   string `json:"name"`
-	Data   string `json:"data"`
 	Icon   string `json:"icon"`
+}
+
+type CategoryOutput struct {
+	Category
+	Resources []Resource
 }
 
 var (
@@ -233,12 +246,14 @@ func deleteResource(w http.ResponseWriter, id int) {
 }
 
 func getResource(w http.ResponseWriter, id int) {
-	var result Resource
-	resources := GetUserResources(User{ID: 1})
-	for _, res := range resources {
-		if res.ID == id {
-			result = res
-			break
+	var result CategoryOutput
+	categories := GetUserResources(User{ID: 1})
+	for _, cat := range categories {
+		for _, res := range cat.Resources {
+			if res.ID == id {
+				result = cat
+				break
+			}
 		}
 	}
 
