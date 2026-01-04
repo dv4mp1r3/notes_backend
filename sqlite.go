@@ -56,10 +56,10 @@ func IsAccountCorrect(user User, salt string) (int, error) {
 func GetUserResources(user User) []CategoryOutput {
 	var result = []CategoryOutput{}
 	rows, err := queryStatement(
-		"SELECT r.id,r.name,r.data,r.user_id,r.category_id,r.icon, "+
-			"c.name as category_name, c.icon category_icon FROM resources r "+
-			"LEFT JOIN categories c on c.id = r.category_id "+
-			"WHERE r.user_id = ?",
+		`SELECT r.id,r.name,r.data,r.user_id,r.category_id,r.icon,c.user_id, c.id,
+			c.name as category_name, c.icon category_icon FROM resources r
+			LEFT JOIN categories c on c.id = r.category_id
+			WHERE r.user_id = ?`,
 		user.ID,
 	)
 	if err != nil {
@@ -70,12 +70,25 @@ func GetUserResources(user User) []CategoryOutput {
 	for rows.Next() {
 		var res Resource
 		var cat CategoryOutput
-		rows.Scan(&res.ID, &res.Name, &res.Data, &res.UserId, &res.CategoryId, &res.Icon, &cat.Category.Name, &cat.Category.Icon)
+		rows.Scan(
+			&res.ID,
+			&res.Name,
+			&res.Data,
+			&res.UserId,
+			&res.CategoryId,
+			&res.Icon,
+			&cat.Category.UserId,
+			&cat.Category.ID,
+			&cat.Category.Name,
+			&cat.Category.Icon,
+		)
 		if _, ok := tmp[res.CategoryId]; !ok {
 			tmp[res.CategoryId] = &CategoryOutput{
 				Category: Category{
-					Name: cat.Name,
-					Icon: cat.Icon,
+					Name:   cat.Name,
+					Icon:   cat.Icon,
+					UserId: cat.UserId,
+					ID:     cat.ID,
 				},
 				Resources: []Resource{},
 			}
