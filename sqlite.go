@@ -12,6 +12,11 @@ var db *sql.DB
 func OpenDB(path string) (*sql.DB, error) {
 	var err error
 	db, err = sql.Open("sqlite3", path)
+	if err != nil {
+		return db, err
+	}
+	// Enable foreign keys for CASCADE to work
+	_, err = db.Exec("PRAGMA foreign_keys = ON")
 	return db, err
 }
 
@@ -55,47 +60,43 @@ func IsAccountCorrect(user User, salt string) (int, error) {
 
 func GetUserResources(user User) []CategoryOutput {
 	var result = []CategoryOutput{}
-	rows, err := queryStatement(
-		`SELECT r.id,r.name,r.data,r.user_id,r.category_id,r.icon,c.user_id, c.id,
-			c.name as category_name, c.icon category_icon FROM resources r
-			LEFT JOIN categories c on c.id = r.category_id
-			WHERE r.user_id = ?`,
+	var tmp = map[int]*CategoryOutput{}
+
+	// First, get all categories for the user
+	catRows, err := queryStatement(
+		`SELECT id, user_id, name, icon FROM categories WHERE user_id = ?`,
 		user.ID,
 	)
 	if err != nil {
 		return result
 	}
-	defer rows.Close()
-	var tmp = map[int]*CategoryOutput{}
-	for rows.Next() {
-		var res Resource
-		var cat CategoryOutput
-		rows.Scan(
-			&res.ID,
-			&res.Name,
-			&res.Data,
-			&res.UserId,
-			&res.CategoryId,
-			&res.Icon,
-			&cat.Category.UserId,
-			&cat.Category.ID,
-			&cat.Category.Name,
-			&cat.Category.Icon,
-		)
-		if _, ok := tmp[res.CategoryId]; !ok {
-			tmp[res.CategoryId] = &CategoryOutput{
-				Category: Category{
-					Name:   cat.Name,
-					Icon:   cat.Icon,
-					UserId: cat.UserId,
-					ID:     cat.ID,
-				},
-				Resources: []Resource{},
-			}
+	defer catRows.Close()
+	for catRows.Next() {
+		var cat Category
+		catRows.Scan(&cat.ID, &cat.UserId, &cat.Name, &cat.Icon)
+		tmp[cat.ID] = &CategoryOutput{
+			Category:  cat,
+			Resources: []Resource{},
 		}
-		tmp[res.CategoryId].Resources = append(tmp[res.CategoryId].Resources, res)
-
 	}
+
+	// Then, get all resources and add them to their categories
+	resRows, err := queryStatement(
+		`SELECT id, name, data, user_id, category_id, icon FROM resources WHERE user_id = ?`,
+		user.ID,
+	)
+	if err != nil {
+		return result
+	}
+	defer resRows.Close()
+	for resRows.Next() {
+		var res Resource
+		resRows.Scan(&res.ID, &res.Name, &res.Data, &res.UserId, &res.CategoryId, &res.Icon)
+		if cat, ok := tmp[res.CategoryId]; ok {
+			cat.Resources = append(cat.Resources, res)
+		}
+	}
+
 	for _, value := range tmp {
 		result = append(result, *value)
 	}
@@ -145,7 +146,7 @@ func InsertResource(res Resource) (int64, error) {
 }
 
 func InsertCategory(cat Category) (int64, error) {
-	success, err := execStatement("INSERT INTO categories (name, user_id, icon) VALUES (?,?,?,?)", cat.Name, cat.UserId, cat.Icon)
+	success, err := execStatement("INSERT INTO categories (name, user_id, icon) VALUES (?,?,?)", cat.Name, cat.UserId, cat.Icon)
 	if err != nil {
 		return 0, err
 	}
