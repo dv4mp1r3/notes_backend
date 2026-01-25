@@ -154,7 +154,7 @@ func InsertCategory(cat Category) (int64, error) {
 }
 
 func UpdateResource(res Resource) (bool, error) {
-	return statementResultAsBool(execStatement("UPDATE resources SET name=?,data=? icon=? WHERE id=?", res.Name, res.Data, res.Icon, res.ID))
+	return statementResultAsBool(execStatement("UPDATE resources SET name=?,data=?, icon=? WHERE id=?", res.Name, res.Data, res.Icon, res.ID))
 }
 
 func UpdateCategory(cat Category) (bool, error) {
