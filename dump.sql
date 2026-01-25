@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS resources (
     data TEXT NOT NULL,
     icon TEXT,
     FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE
-    FOREIGN KEY (category_id) REFERENCES category(id) ON DELETE CASCADE
+    FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS categories (
