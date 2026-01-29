@@ -19,11 +19,24 @@ type User struct {
 }
 
 type Resource struct {
+	ID         int    `json:"id"`
+	UserId     int    `json:"userId"`
+	CategoryId int    `json:"categoryId"`
+	Name       string `json:"name"`
+	Data       string `json:"data"`
+	Icon       string `json:"icon"`
+}
+
+type Category struct {
 	ID     int    `json:"id"`
 	UserId int    `json:"userId"`
 	Name   string `json:"name"`
-	Data   string `json:"data"`
 	Icon   string `json:"icon"`
+}
+
+type CategoryOutput struct {
+	Category
+	Resources []Resource
 }
 
 var (
@@ -93,6 +106,8 @@ func main() {
 	mux.HandleFunc(apiPrefix+"/resources", getResources)
 	mux.HandleFunc(apiPrefix+"/resource/{id}", updateResource)
 	mux.HandleFunc(apiPrefix+"/resource", setResource)
+	mux.HandleFunc(apiPrefix+"/category/{id}", updateCategory)
+	mux.HandleFunc(apiPrefix+"/category", setCategory)
 
 	fmt.Println("Server is running on port", appPort)
 
@@ -233,12 +248,14 @@ func deleteResource(w http.ResponseWriter, id int) {
 }
 
 func getResource(w http.ResponseWriter, id int) {
-	var result Resource
-	resources := GetUserResources(User{ID: 1})
-	for _, res := range resources {
-		if res.ID == id {
-			result = res
-			break
+	var result CategoryOutput
+	categories := GetUserResources(User{ID: 1})
+	for _, cat := range categories {
+		for _, res := range cat.Resources {
+			if res.ID == id {
+				result = cat
+				break
+			}
 		}
 	}
 
@@ -279,4 +296,93 @@ func postResource(w http.ResponseWriter, r *http.Request, userId int) {
 	}
 	res.ID = int(resourceId)
 	returnJson(w, res)
+}
+
+func setCategory(w http.ResponseWriter, r *http.Request) {
+	_, userId := isAuthorized(r)
+	if !(userId > 0) {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	if r.Method != "POST" {
+		http.Error(w, "Only POST allowed", http.StatusBadRequest)
+		return
+	}
+
+	postCategory(w, r, userId)
+}
+
+func updateCategory(w http.ResponseWriter, r *http.Request) {
+	_, userId := isAuthorized(r)
+	if !(userId > 0) {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	id, err := strconv.Atoi(r.URL.Path[len("/category/"):])
+	if err != nil {
+		http.Error(w, "Invalid category ID", http.StatusBadRequest)
+		return
+	}
+
+	if r.Method == "DELETE" {
+		deleteCategory(w, id)
+		return
+	} else {
+		putCategory(w, r, id)
+		getCategory(w, id, userId)
+	}
+}
+
+func deleteCategory(w http.ResponseWriter, id int) {
+	success, err := DeleteCategory(id)
+	if !success {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+}
+
+func getCategory(w http.ResponseWriter, id int, userId int) {
+	categories := GetUserResources(User{ID: userId})
+	for _, cat := range categories {
+		if cat.ID == id {
+			returnJson(w, cat)
+			return
+		}
+	}
+	http.Error(w, "Category not found", http.StatusNotFound)
+}
+
+func putCategory(w http.ResponseWriter, r *http.Request, id int) {
+	var cat Category
+	if err := json.NewDecoder(r.Body).Decode(&cat); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+	if cat.ID <= 0 {
+		http.Error(w, "Not found", http.StatusNotFound)
+		return
+	}
+	success, err := UpdateCategory(cat)
+	if !success {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+	}
+}
+
+func postCategory(w http.ResponseWriter, r *http.Request, userId int) {
+	var cat Category
+	if err := json.NewDecoder(r.Body).Decode(&cat); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+	cat.UserId = userId
+	categoryId, err := InsertCategory(cat)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	cat.ID = int(categoryId)
+	returnJson(w, cat)
 }

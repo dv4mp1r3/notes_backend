@@ -12,6 +12,10 @@ var db *sql.DB
 func OpenDB(path string) (*sql.DB, error) {
 	var err error
 	db, err = sql.Open("sqlite3", path)
+	if err != nil {
+		return db, err
+	}
+	_, err = db.Exec("PRAGMA foreign_keys = ON")
 	return db, err
 }
 
@@ -53,20 +57,45 @@ func IsAccountCorrect(user User, salt string) (int, error) {
 	return id, err
 }
 
-func GetUserResources(user User) []Resource {
-	result := []Resource{}
-	rows, err := queryStatement(
-		"SELECT id,name,data,user_id,icon FROM resources WHERE resources.user_id = ?",
+func GetUserResources(user User) []CategoryOutput {
+	var result = []CategoryOutput{}
+	var tmp = map[int]*CategoryOutput{}
+
+	catRows, err := queryStatement(
+		`SELECT id, user_id, name, icon FROM categories WHERE user_id = ?`,
 		user.ID,
 	)
 	if err != nil {
 		return result
 	}
-	defer rows.Close()
-	for rows.Next() {
+	defer catRows.Close()
+	for catRows.Next() {
+		var cat Category
+		catRows.Scan(&cat.ID, &cat.UserId, &cat.Name, &cat.Icon)
+		tmp[cat.ID] = &CategoryOutput{
+			Category:  cat,
+			Resources: []Resource{},
+		}
+	}
+
+	resRows, err := queryStatement(
+		`SELECT id, name, data, user_id, category_id, icon FROM resources WHERE user_id = ?`,
+		user.ID,
+	)
+	if err != nil {
+		return result
+	}
+	defer resRows.Close()
+	for resRows.Next() {
 		var res Resource
-		rows.Scan(&res.ID, &res.Name, &res.Data, &res.UserId, &res.Icon)
-		result = append(result, res)
+		resRows.Scan(&res.ID, &res.Name, &res.Data, &res.UserId, &res.CategoryId, &res.Icon)
+		if cat, ok := tmp[res.CategoryId]; ok {
+			cat.Resources = append(cat.Resources, res)
+		}
+	}
+
+	for _, value := range tmp {
+		result = append(result, *value)
 	}
 	return result
 }
@@ -106,7 +135,15 @@ func DeleteUser(username string) (bool, error) {
 }
 
 func InsertResource(res Resource) (int64, error) {
-	success, err := execStatement("INSERT INTO resources (name, data, user_id, icon) VALUES (?,?,?,?)", res.Name, res.Data, res.UserId, res.Icon)
+	success, err := execStatement("INSERT INTO resources (name, data, user_id, category_id, icon) VALUES (?,?,?,?,?)", res.Name, res.Data, res.UserId, res.CategoryId, res.Icon)
+	if err != nil {
+		return 0, err
+	}
+	return success.LastInsertId()
+}
+
+func InsertCategory(cat Category) (int64, error) {
+	success, err := execStatement("INSERT INTO categories (name, user_id, icon) VALUES (?,?,?)", cat.Name, cat.UserId, cat.Icon)
 	if err != nil {
 		return 0, err
 	}
@@ -117,6 +154,14 @@ func UpdateResource(res Resource) (bool, error) {
 	return statementResultAsBool(execStatement("UPDATE resources SET name=?,data=?, icon=? WHERE id=?", res.Name, res.Data, res.Icon, res.ID))
 }
 
+func UpdateCategory(cat Category) (bool, error) {
+	return statementResultAsBool(execStatement("UPDATE categories SET name=?,icon=? WHERE id=?", cat.Name, cat.Icon, cat.ID))
+}
+
 func DeleteResource(id int) (bool, error) {
 	return statementResultAsBool(execStatement("DELETE FROM resources WHERE id=?", id))
+}
+
+func DeleteCategory(id int) (bool, error) {
+	return statementResultAsBool(execStatement("DELETE FROM categories WHERE id=?", id))
 }
