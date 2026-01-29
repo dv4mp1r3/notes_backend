@@ -15,7 +15,6 @@ func OpenDB(path string) (*sql.DB, error) {
 	if err != nil {
 		return db, err
 	}
-	// Enable foreign keys for CASCADE to work
 	_, err = db.Exec("PRAGMA foreign_keys = ON")
 	return db, err
 }
@@ -62,7 +61,6 @@ func GetUserResources(user User) []CategoryOutput {
 	var result = []CategoryOutput{}
 	var tmp = map[int]*CategoryOutput{}
 
-	// First, get all categories for the user
 	catRows, err := queryStatement(
 		`SELECT id, user_id, name, icon FROM categories WHERE user_id = ?`,
 		user.ID,
@@ -80,7 +78,6 @@ func GetUserResources(user User) []CategoryOutput {
 		}
 	}
 
-	// Then, get all resources and add them to their categories
 	resRows, err := queryStatement(
 		`SELECT id, name, data, user_id, category_id, icon FROM resources WHERE user_id = ?`,
 		user.ID,
